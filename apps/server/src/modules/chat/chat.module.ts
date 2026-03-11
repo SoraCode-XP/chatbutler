@@ -5,9 +5,10 @@ import { ChatController } from './chat.controller';
 import { LlmGatewayModule } from '../llm-gateway/llm-gateway.module';
 import { TokenModule } from '../token/token.module';
 import { AgentModule } from '../agent/agent.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [LlmGatewayModule, TokenModule, AgentModule],
+  imports: [LlmGatewayModule, TokenModule, AgentModule, AuthModule],
   controllers: [ChatController],
   providers: [ChatGateway, ChatService],
   exports: [ChatService],

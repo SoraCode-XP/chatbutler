@@ -8,7 +8,16 @@ export class UserService {
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { membership: true },
+      select: {
+        id: true,
+        email: true,
+        nickname: true,
+        avatar: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        membership: true,
+      },
     });
   }
 

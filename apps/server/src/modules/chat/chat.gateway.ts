@@ -4,13 +4,20 @@ import {
   SubscribeMessage,
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
 } from '@nestjs/websockets';
+import { Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Server, Socket } from 'socket.io';
 import { WS_EVENTS } from '@chatbutler/shared';
 import { ChatService } from './chat.service';
 import { AgentService } from '../agent/agent.service';
 import { LlmRouterService } from '../llm-gateway/llm-router.service';
 import { TokenService } from '../token/token.service';
+import { RedisService } from '../../common/redis/redis.service';
+
+const ACTIVE_SESSIONS_KEY = 'chatbutler:active_sessions';
 
 @WebSocketGateway({
   cors: {
@@ -18,16 +25,42 @@ import { TokenService } from '../token/token.service';
     credentials: true,
   },
 })
-export class ChatGateway {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
+
+  private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
     private chatService: ChatService,
     private agentService: AgentService,
     private llmRouter: LlmRouterService,
     private tokenService: TokenService,
+    private jwtService: JwtService,
+    private redis: RedisService,
   ) {}
+
+  async handleConnection(client: Socket) {
+    try {
+      const token = client.handshake.auth?.token || client.handshake.headers?.authorization?.replace('Bearer ', '');
+      if (!token) {
+        this.logger.warn(`Client ${client.id} connected without token`);
+        return;
+      }
+      const payload = this.jwtService.verify(token);
+      (client as any).userId = payload.sub || payload.userId || payload.id;
+      this.logger.log(`Client ${client.id} authenticated as user ${(client as any).userId}`);
+      await this.redis.incr(ACTIVE_SESSIONS_KEY);
+    } catch {
+      this.logger.warn(`Client ${client.id} has invalid token`);
+    }
+  }
+
+  async handleDisconnect(client: Socket) {
+    if ((client as any).userId) {
+      await this.redis.decr(ACTIVE_SESSIONS_KEY);
+    }
+  }
 
   @SubscribeMessage(WS_EVENTS.CHAT_SEND)
   async handleMessage(
@@ -48,7 +81,7 @@ export class ChatGateway {
       }
 
       // Create or get conversation
-      let conversationId = data.conversationId;
+      let conversationId: string = data.conversationId ?? '';
       if (!conversationId) {
         const conv = await this.chatService.createConversation(userId, data.agentId);
         conversationId = conv.id;

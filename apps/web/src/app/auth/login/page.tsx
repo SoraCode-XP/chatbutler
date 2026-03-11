@@ -18,8 +18,15 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      toast.success('登录成功');
-      router.push('/chat');
+      const { user } = useAuthStore.getState();
+      if (user?.role === 'admin') {
+        toast.success('检测到管理员账号');
+        toast('请前往管理后台 (localhost:3002) 进行管理操作', { icon: 'ℹ️', duration: 5000 });
+        router.push('/chat');
+      } else {
+        toast.success('登录成功');
+        router.push('/chat');
+      }
     } catch {
       toast.error('登录失败，请检查邮箱和密码');
     } finally {

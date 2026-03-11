@@ -10,6 +10,19 @@ interface AuthState {
   loadUser: () => Promise<void>;
 }
 
+function setTokens(accessToken: string, refreshToken: string) {
+  localStorage.setItem('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+  // 同步写 cookie，供 Next.js middleware 服务端读取（15分钟，与JWT一致）
+  document.cookie = `accessToken=${accessToken}; path=/; max-age=900; SameSite=Lax`;
+}
+
+function clearTokens() {
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  document.cookie = 'accessToken=; path=/; max-age=0';
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
@@ -19,8 +32,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       email,
       password,
     });
-    localStorage.setItem('accessToken', res.accessToken);
-    localStorage.setItem('refreshToken', res.refreshToken);
+    setTokens(res.accessToken, res.refreshToken);
     set({ isAuthenticated: true });
     // 加载用户信息
     const user = await api.get<AuthState['user']>('/api/user/profile');
@@ -33,16 +45,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       password,
       nickname,
     });
-    localStorage.setItem('accessToken', res.accessToken);
-    localStorage.setItem('refreshToken', res.refreshToken);
+    setTokens(res.accessToken, res.refreshToken);
     set({ isAuthenticated: true });
     const user = await api.get<AuthState['user']>('/api/user/profile');
     set({ user });
   },
 
   logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    clearTokens();
     set({ user: null, isAuthenticated: false });
   },
 
@@ -53,6 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = await api.get<AuthState['user']>('/api/user/profile');
       set({ user, isAuthenticated: true });
     } catch {
+      clearTokens();
       set({ user: null, isAuthenticated: false });
     }
   },

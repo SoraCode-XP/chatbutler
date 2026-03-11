@@ -8,7 +8,7 @@ export class OpenAICompatibleAdapter implements LLMProvider {
 
   constructor(private config: ProviderConfig) {
     this.name = config.slug;
-    this.defaultModel = config.models[0]?.modelId ?? 'gpt-3.5-turbo';
+    this.defaultModel = config.models[0]?.id ?? 'gpt-3.5-turbo';
 
     const headers: Record<string, string> = {};
     if (config.extraHeaders) {
