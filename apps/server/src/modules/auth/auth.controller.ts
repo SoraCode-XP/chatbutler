@@ -11,7 +11,7 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: '用户注册' })
   async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto.email, dto.password, dto.name);
+    return this.authService.register(dto.email, dto.password, dto.nickname);
   }
 
   @Post('login')

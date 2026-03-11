@@ -36,30 +36,20 @@ export interface RegisteredProvider {
 export interface ProviderConfig {
   id: string;
   name: string;
-  displayName: string;
-  type: string;
-  authType: string;
-  category: string;
-  baseURL: string;
-  apiKeyEncrypted: string;
-  extraHeaders: Record<string, string>;
-  proxyTemplate: string | null;
+  slug: string;
+  baseUrl: string;
+  apiKey: string;
+  extraHeaders?: Record<string, string>;
   models: ProviderModelConfig[];
-  defaultWeight: number;
-  timeout: number;
-  maxRetries: number;
-  concurrencyLimit: number;
-  ratioMultiplier: number;
   isEnabled: boolean;
 }
 
 export interface ProviderModelConfig {
   id: string;
-  displayName: string;
-  maxContextWindow: number;
-  inputPricePerMToken: number;
-  outputPricePerMToken: number;
-  capabilities: string[];
-  tier: string[];
+  name: string;
+  maxTokens: number;
+  inputPrice: number;
+  outputPrice: number;
+  memberTier?: string;
   isEnabled: boolean;
 }

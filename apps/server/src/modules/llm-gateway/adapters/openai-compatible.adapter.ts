@@ -6,7 +6,7 @@ export class OpenAICompatibleAdapter implements LLMProvider {
   private client: OpenAI;
 
   constructor(private config: ProviderConfig) {
-    this.name = config.name;
+    this.name = config.slug;
 
     const headers: Record<string, string> = {};
     if (config.extraHeaders) {
@@ -14,11 +14,11 @@ export class OpenAICompatibleAdapter implements LLMProvider {
     }
 
     this.client = new OpenAI({
-      apiKey: config.apiKeyEncrypted, // Will be decrypted before passing
-      baseURL: config.baseURL,
+      apiKey: config.apiKey,
+      baseURL: config.baseUrl,
       defaultHeaders: headers,
-      timeout: (config.timeout || 30) * 1000,
-      maxRetries: config.maxRetries || 2,
+      timeout: 30000,
+      maxRetries: 2,
     });
   }
 

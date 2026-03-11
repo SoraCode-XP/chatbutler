@@ -31,12 +31,30 @@ export class ProviderRegistryService implements OnModuleInit {
 
     for (const config of configs) {
       try {
-        const adapter = this.createAdapter(config as any);
-        this.providers.set(config.name, {
-          config: config as any,
+        const adapter = this.createAdapter({
+          id: config.id,
+          name: config.name,
+          slug: config.slug,
+          baseUrl: config.baseUrl,
+          apiKey: config.apiKey,
+          extraHeaders: (config.extraHeaders || {}) as Record<string, string>,
+          models: (config.models || []) as any,
+          isEnabled: config.isEnabled,
+        });
+        this.providers.set(config.slug, {
+          config: {
+            id: config.id,
+            name: config.name,
+            slug: config.slug,
+            baseUrl: config.baseUrl,
+            apiKey: config.apiKey,
+            extraHeaders: (config.extraHeaders || {}) as Record<string, string>,
+            models: (config.models || []) as any,
+            isEnabled: config.isEnabled,
+          },
           adapter,
         });
-        this.logger.log(`Loaded provider: ${config.displayName}`);
+        this.logger.log(`Loaded provider: ${config.name} (${config.slug})`);
       } catch (error) {
         this.logger.error(`Failed to load provider ${config.name}:`, error);
       }
@@ -70,18 +88,29 @@ export class ProviderRegistryService implements OnModuleInit {
     return models;
   }
 
-  async reloadProvider(name: string) {
+  async reloadProvider(slug: string) {
     const config = await this.prisma.llmProviderConfig.findUnique({
-      where: { name },
+      where: { slug },
     });
 
     if (!config || !config.isEnabled) {
-      this.providers.delete(name);
+      this.providers.delete(slug);
       return;
     }
 
-    const adapter = this.createAdapter(config as any);
-    this.providers.set(name, { config: config as any, adapter });
-    this.logger.log(`Reloaded provider: ${config.displayName}`);
+    const mapped = {
+      id: config.id,
+      name: config.name,
+      slug: config.slug,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      extraHeaders: (config.extraHeaders || {}) as Record<string, string>,
+      models: (config.models || []) as any,
+      isEnabled: config.isEnabled,
+    };
+
+    const adapter = this.createAdapter(mapped);
+    this.providers.set(slug, { config: mapped, adapter });
+    this.logger.log(`Reloaded provider: ${config.name} (${config.slug})`);
   }
 }

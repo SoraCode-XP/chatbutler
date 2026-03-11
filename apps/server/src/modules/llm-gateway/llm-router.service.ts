@@ -34,7 +34,7 @@ export class LlmRouterService {
     // 2. Check agent-model bindings
     const bindings = await this.prisma.agentModelBinding.findMany({
       where: { agentId: context.agentId },
-      orderBy: { weight: 'desc' },
+      orderBy: { priority: 'desc' },
     });
 
     // 3. Get user membership tier
@@ -51,13 +51,13 @@ export class LlmRouterService {
 
     // Try agent-bound models first
     for (const binding of bindings) {
-      if (binding.complexityTier && binding.complexityTier !== complexity) continue;
+      if (binding.complexity && binding.complexity !== complexity) continue;
 
       const candidate = candidates.find(
         (c) => c.provider === binding.providerId && c.model.id === binding.modelId,
       );
 
-      if (candidate && candidate.model.tier.includes(userTier)) {
+      if (candidate && this.isModelAllowedForTier(candidate.model, userTier)) {
         selected = candidate;
         break;
       }
@@ -65,7 +65,7 @@ export class LlmRouterService {
 
     // Fallback: pick first available model matching user tier
     if (!selected) {
-      selected = candidates.find((c) => c.model.tier.includes(userTier)) || candidates[0];
+      selected = candidates.find((c) => this.isModelAllowedForTier(c.model, userTier)) || candidates[0];
     }
 
     const providerReg = this.registry.get(selected.provider);
@@ -90,5 +90,11 @@ export class LlmRouterService {
     if (totalLength < 200 && turns <= 2) return 'simple';
     if (totalLength < 2000 && turns <= 10) return 'medium';
     return 'complex';
+  }
+
+  private isModelAllowedForTier(model: ProviderModelConfig, userTier: string): boolean {
+    const tiers = ['free', 'basic', 'pro', 'enterprise'];
+    const modelTier = model.memberTier || 'free';
+    return tiers.indexOf(userTier) >= tiers.indexOf(modelTier);
   }
 }

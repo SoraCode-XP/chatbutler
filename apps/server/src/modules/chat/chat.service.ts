@@ -22,7 +22,7 @@ export class ChatService {
   async getConversations(userId: string, agentId?: string) {
     return this.prisma.conversation.findMany({
       where: { userId, ...(agentId ? { agentId } : {}) },
-      orderBy: { lastMessageAt: 'desc' },
+      orderBy: { updatedAt: 'desc' },
       take: 50,
     });
   }
@@ -39,14 +39,20 @@ export class ChatService {
     conversationId: string;
     role: string;
     content: string;
-    tokenCount?: number;
     modelUsed?: string;
   }) {
-    const message = await this.prisma.message.create({ data });
+    const message = await this.prisma.message.create({
+      data: {
+        conversationId: data.conversationId,
+        role: data.role,
+        content: data.content,
+        modelId: data.modelUsed,
+      },
+    });
 
     await this.prisma.conversation.update({
       where: { id: data.conversationId },
-      data: { lastMessageAt: new Date() },
+      data: { updatedAt: new Date() },
     });
 
     return message;

@@ -9,7 +9,7 @@ export class AgentService {
     const agents = await this.prisma.agent.findMany({
       where: { isEnabled: true },
       include: { category: true },
-      orderBy: [{ type: 'asc' }, { priority: 'desc' }],
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
     });
 
     if (userId) {
@@ -20,7 +20,7 @@ export class AgentService {
       return agents.map((a) => ({
         ...a,
         isFavorite: prefMap.get(a.id)?.isFavorite ?? false,
-        sortOrder: prefMap.get(a.id)?.sortOrder ?? 0,
+        useCount: prefMap.get(a.id)?.useCount ?? 0,
       }));
     }
 

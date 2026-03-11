@@ -20,7 +20,7 @@ import { TokenService } from '../token/token.service';
 })
 export class ChatGateway {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   constructor(
     private chatService: ChatService,

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
-import { connectSocket, disconnectSocket } from '@/lib/socket';
+import { connectSocket } from '@/lib/socket';
 import { WS_EVENTS } from '@chatbutler/shared';
 import type { Message, Conversation } from '@chatbutler/shared';
 
@@ -41,6 +41,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 添加用户消息到列表
     const userMessage: Message = {
       id: `temp-${Date.now()}`,
+      conversationId: conversationId || 'temp',
       role: 'user',
       content,
       createdAt: new Date().toISOString(),
@@ -52,25 +53,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     socket.emit(WS_EVENTS.CHAT_SEND, {
-      content,
+      message: content,
       agentId,
       conversationId,
     });
 
     // 监听流式返回
     socket.off(WS_EVENTS.CHAT_CHUNK);
-    socket.off(WS_EVENTS.CHAT_DONE);
+    socket.off(WS_EVENTS.CHAT_COMPLETE);
     socket.off(WS_EVENTS.CHAT_ERROR);
 
-    socket.on(WS_EVENTS.CHAT_CHUNK, (data: { content: string }) => {
+    socket.on(WS_EVENTS.CHAT_CHUNK, (data: { chunk: string }) => {
       set((state) => ({
-        streamingContent: state.streamingContent + data.content,
+        streamingContent: state.streamingContent + data.chunk,
       }));
     });
 
-    socket.on(WS_EVENTS.CHAT_DONE, (data: { conversationId: string; message: Message }) => {
+    socket.on(WS_EVENTS.CHAT_COMPLETE, (data: { conversationId: string; messageId: string }) => {
       set((state) => ({
-        messages: [...state.messages, data.message],
+        messages: [
+          ...state.messages,
+          {
+            id: data.messageId,
+            conversationId: data.conversationId,
+            role: 'assistant',
+            content: state.streamingContent,
+            createdAt: new Date().toISOString(),
+          },
+        ],
         streamingContent: '',
         isStreaming: false,
         currentConversation: state.currentConversation

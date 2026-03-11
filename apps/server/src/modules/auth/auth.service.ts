@@ -10,7 +10,7 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(email: string, password: string, name: string) {
+  async register(email: string, password: string, nickname: string) {
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new UnauthorizedException('邮箱已注册');
@@ -20,8 +20,8 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         email,
-        passwordHash,
-        name,
+        password: passwordHash,
+        nickname,
         membership: {
           create: { level: 'free', resourcePoints: 100 },
         },
@@ -42,7 +42,7 @@ export class AuthService {
       throw new UnauthorizedException('邮箱或密码错误');
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
+    const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       throw new UnauthorizedException('邮箱或密码错误');
     }
@@ -70,7 +70,7 @@ export class AuthService {
   }
 
   private sanitizeUser(user: any) {
-    const { passwordHash, ...rest } = user;
+    const { password, ...rest } = user;
     return rest;
   }
 }

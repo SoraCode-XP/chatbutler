@@ -45,7 +45,13 @@ export function ChatArea() {
         ))}
         {isStreaming && streamingContent && (
           <MessageBubble
-            message={{ id: 'streaming', role: 'assistant', content: streamingContent, createdAt: '' }}
+            message={{
+              id: 'streaming',
+              conversationId: currentAgent.id,
+              role: 'assistant',
+              content: streamingContent,
+              createdAt: '',
+            }}
             isStreaming
           />
         )}

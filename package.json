@@ -23,12 +23,12 @@
     "db:studio": "pnpm --filter @chatbutler/server prisma:studio",
     "db:init": "pnpm db:generate && pnpm db:migrate && pnpm db:seed",
     "setup:check": "tsx scripts/check-env.ts",
-    "setup:docker": "docker compose -f docker/docker-compose.dev.yml up -d",
+    "setup:docker": "docker compose -f docker-compose.dev.yml up -d",
     "setup:env": "tsx scripts/copy-env.ts",
     "setup:all": "pnpm setup:check && pnpm install && pnpm setup:docker && pnpm setup:env && pnpm db:init",
-    "docker:up": "docker compose -f docker/docker-compose.dev.yml up -d",
-    "docker:down": "docker compose -f docker/docker-compose.dev.yml down",
-    "docker:reset": "docker compose -f docker/docker-compose.dev.yml down -v",
+    "docker:up": "docker compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker compose -f docker-compose.dev.yml down",
+    "docker:reset": "docker compose -f docker-compose.dev.yml down -v",
     "clean": "turbo clean && rimraf node_modules"
   },
   "devDependencies": {
