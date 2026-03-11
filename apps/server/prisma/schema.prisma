@@ -1,0 +1,208 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 用户体系 ====================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nickname  String?
+  avatar    String?
+  role      String   @default("user") // user | admin
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  membership      Membership?
+  conversations   Conversation[]
+  tokenUsages     TokenUsage[]
+  agentPreferences UserAgentPreference[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  level          String   @default("free") // free | basic | pro | enterprise
+  resourcePoints Int      @default(0) @map("resource_points")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memberships")
+}
+
+// ==================== 智能体体系 ====================
+
+model AgentCategory {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  agents Agent[]
+
+  @@map("agent_categories")
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  avatar       String?
+  systemPrompt String   @map("system_prompt") @db.Text
+  categoryId   String   @map("category_id")
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+  sortOrder    Int      @default(0) @map("sort_order")
+  requiredLevel String  @default("free") @map("required_level") // 最低会员等级
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  category     AgentCategory @relation(fields: [categoryId], references: [id])
+  conversations Conversation[]
+  tokenUsages  TokenUsage[]
+  modelBindings AgentModelBinding[]
+  templates    Template[]
+  userPreferences UserAgentPreference[]
+
+  @@map("agents")
+}
+
+model UserAgentPreference {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  agentId   String   @map("agent_id")
+  isFavorite Boolean @default(false) @map("is_favorite")
+  lastUsedAt DateTime? @map("last_used_at")
+  useCount  Int      @default(0) @map("use_count")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, agentId])
+  @@map("user_agent_preferences")
+}
+
+// ==================== 对话体系 ====================
+
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  agentId   String   @map("agent_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent    Agent     @relation(fields: [agentId], references: [id])
+  messages Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           String   // system | user | assistant
+  content        String   @db.Text
+  modelId        String?  @map("model_id")
+  inputTokens    Int?     @map("input_tokens")
+  outputTokens   Int?     @map("output_tokens")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// ==================== Token 用量 ====================
+
+model TokenUsage {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  agentId      String   @map("agent_id")
+  modelId      String   @map("model_id")
+  providerId   String   @map("provider_id")
+  inputTokens  Int      @map("input_tokens")
+  outputTokens Int      @map("output_tokens")
+  cost         Float    @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent Agent @relation(fields: [agentId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([agentId, createdAt])
+  @@map("token_usages")
+}
+
+// ==================== LLM 供应商配置 ====================
+
+model LlmProviderConfig {
+  id           String   @id @default(cuid())
+  name         String   // 显示名称
+  slug         String   @unique // openai | zhipu | minimax | qwen | deepseek | openrouter
+  baseUrl      String   @map("base_url")
+  apiKey       String   @map("api_key")
+  extraHeaders Json?    @map("extra_headers")
+  isEnabled    Boolean  @default(true) @map("is_enabled")
+  models       Json     // [{ modelId, name, maxTokens, inputPrice, outputPrice, isEnabled, memberTier }]
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  modelBindings AgentModelBinding[]
+
+  @@map("llm_provider_configs")
+}
+
+model AgentModelBinding {
+  id         String @id @default(cuid())
+  agentId    String @map("agent_id")
+  providerId String @map("provider_id")
+  modelId    String @map("model_id")
+  priority   Int    @default(0) // 优先级, 越大越优先
+  complexity String @default("medium") // simple | medium | complex
+
+  agent    Agent             @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  provider LlmProviderConfig @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, providerId, modelId, complexity])
+  @@map("agent_model_bindings")
+}
+
+// ==================== 内容模板 ====================
+
+model Template {
+  id          String   @id @default(cuid())
+  agentId     String?  @map("agent_id")
+  name        String
+  description String?
+  content     String   @db.Text
+  variables   Json?    // [{ key, label, type, placeholder }]
+  isEnabled   Boolean  @default(true) @map("is_enabled")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  agent Agent? @relation(fields: [agentId], references: [id])
+
+  @@map("templates")
+}
