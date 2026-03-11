@@ -3,6 +3,24 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+function parseCorsOrigins(): string[] {
+  const envOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  const configured = [
+    process.env.WEB_URL,
+    process.env.ADMIN_URL,
+    ...envOrigins,
+  ].filter((item): item is string => Boolean(item));
+
+  // 默认放行本地开发常见来源，避免 web/admin 双端本地联调被拦截
+  const defaults = ['http://localhost:3000', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3002'];
+
+  return Array.from(new Set([...configured, ...defaults]));
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -17,7 +35,17 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: process.env.WEB_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      const allowList = parseCorsOrigins();
+
+      // non-browser request（无 Origin）直接放行，如 curl/healthcheck
+      if (!origin || allowList.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked origin: ${origin}`), false);
+    },
     credentials: true,
   });
 

@@ -178,18 +178,25 @@ async function main() {
     },
   });
 
+  const minimaxModels = [
+    { modelId: 'MiniMax-Text-01', name: 'MiniMax-Text-01', maxTokens: 8192, inputPrice: 0.004, outputPrice: 0.016, isEnabled: true, memberTier: 'free' },
+    { modelId: 'MiniMax-M2.1', name: 'MiniMax-M2.1', maxTokens: 32768, inputPrice: 0.006, outputPrice: 0.018, isEnabled: true, memberTier: 'basic' },
+    { modelId: 'MiniMax-M2.5', name: 'MiniMax-M2.5', maxTokens: 131072, inputPrice: 0.012, outputPrice: 0.036, isEnabled: true, memberTier: 'pro' },
+  ];
+
   await prisma.llmProviderConfig.upsert({
     where: { slug: 'minimax' },
-    update: {},
+    update: {
+      apiKey: process.env.MINIMAX_API_KEY || '',
+      models: minimaxModels,
+    },
     create: {
       name: 'MiniMax',
       slug: 'minimax',
       baseUrl: 'https://api.minimax.chat/v1',
       apiKey: process.env.MINIMAX_API_KEY || '',
       isEnabled: true,
-      models: [
-        { modelId: 'MiniMax-Text-01', name: 'MiniMax-Text-01', maxTokens: 8192, inputPrice: 0.004, outputPrice: 0.016, isEnabled: true, memberTier: 'free' },
-      ],
+      models: minimaxModels,
     },
   });
 

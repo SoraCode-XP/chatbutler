@@ -7,9 +7,9 @@
 | 层级 | 技术 |
 |------|------|
 | 前端 | Next.js 14 (App Router) + Tailwind CSS + Zustand |
+| 管理端 | Next.js 14 + Recharts |
 | 后端 | NestJS + Prisma + Socket.IO |
 | 数据库 | PostgreSQL 16 + Redis 7 |
-| 桌面端 | Tauri 2.0（规划中） |
 | 工程化 | Turborepo + pnpm workspaces |
 
 ## 环境要求
@@ -91,19 +91,45 @@ pnpm dev:server
 
 # 仅启动前端 (http://localhost:3000)
 pnpm dev:web
+
+# 仅启动管理端 (http://localhost:3002)
+pnpm dev:admin
+
+# 后台启动前端+后端+管理端（可一键停止，不依赖固定端口）
+pnpm dev:all:bg
 ```
 
 启动后访问：
 
 - 前端：http://localhost:3000
+- 管理端：http://localhost:3002
 - 后端 API：http://localhost:3001
 - API 文档（Swagger）：http://localhost:3001/api/docs
 - 数据库可视化：`pnpm db:studio` → http://localhost:5555
+
+## 架构概览
+
+ChatButler 采用 Monorepo 分层架构：
+
+1. `apps/web`：用户侧应用，负责登录、智能体选择、对话与实时消息展示。
+2. `apps/admin`：运营后台，负责用户、模型供应商、使用量等管理能力。
+3. `apps/server`：NestJS 服务端，提供 REST API + WebSocket，承载认证、会话、模型路由、内容模板等核心业务。
+4. `packages/shared`：跨端共享类型、常量与协议定义，保证前后端契约一致。
+
+核心数据流：
+
+`Web/Admin` → `Server (Auth/Chat/LlmGateway/Admin...)` → `PostgreSQL + Redis` → `外部 LLM Provider`
 
 ## 停止
 
 ```bash
 # 停止前端/后端（终端按 Ctrl+C）
+
+# 停止由 dev:all:bg 启动的所有开发进程（动态端口也可用）
+pnpm dev:stop
+
+# 查看由 dev:all:bg 管理的进程状态
+pnpm dev:status
 
 # 停止 Docker 容器（保留数据）
 pnpm docker:down
@@ -119,6 +145,10 @@ pnpm docker:reset
 pnpm dev                  # 启动所有服务
 pnpm dev:server           # 仅后端
 pnpm dev:web              # 仅前端
+pnpm dev:admin            # 仅管理端
+pnpm dev:all:bg           # 后台启动 web/server/admin
+pnpm dev:stop             # 停止后台启动的 web/server/admin
+pnpm dev:status           # 查看后台进程状态
 pnpm type-check           # 全量 TS 类型检查
 
 # 数据库
@@ -146,6 +176,11 @@ pnpm clean                # 清除所有构建产物和 node_modules
 ```
 chatbutler/
 ├── apps/
+│   ├── admin/                # Next.js 管理端
+│   │   └── src/
+│   │       ├── app/          # 管理后台页面
+│   │       ├── lib/          # API 客户端与工具
+│   │       └── store/        # 管理端状态管理
 │   ├── server/               # NestJS 后端
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma # 数据模型
@@ -160,14 +195,14 @@ chatbutler/
 │   │           ├── llm-gateway/ # 多模型路由网关
 │   │           ├── token/    # Token 用量统计
 │   │           ├── member/   # 会员体系
-│   │           └── admin/    # 管理后台
+│   │           ├── content/  # 内容模板管理
+│   │           └── admin/    # 管理端接口
 │   ├── web/                  # Next.js 前端
 │   │   └── src/
 │   │       ├── app/          # App Router 页面
 │   │       ├── components/   # UI 组件
 │   │       ├── store/        # Zustand 状态
 │   │       └── lib/          # API 客户端 / Socket
-│   └── desktop/              # Tauri 桌面端（规划中）
 ├── packages/
 │   └── shared/               # 前后端共享类型 & 常量
 ├── docker-compose.dev.yml
@@ -185,6 +220,9 @@ chatbutler/
 | 智谱 AI | `zhipu` | GLM-4-Flash、GLM-4.7-Flash |
 | DeepSeek | `deepseek` | deepseek-chat |
 | MiniMax | `minimax` | MiniMax-Text-01 |
+| 通义千问 | `qwen` | qwen-turbo |
+| OpenRouter | `openrouter` | Claude（按配置） |
+| OpenAI | `openai` | GPT-4o-mini |
 
 热重载 provider：
 
