@@ -4,9 +4,11 @@ import { LLMProvider, LLMChatRequest, LLMChatResponse, LLMChatChunk, ProviderCon
 export class OpenAICompatibleAdapter implements LLMProvider {
   readonly name: string;
   private client: OpenAI;
+  private defaultModel: string;
 
   constructor(private config: ProviderConfig) {
     this.name = config.slug;
+    this.defaultModel = config.models[0]?.modelId ?? 'gpt-3.5-turbo';
 
     const headers: Record<string, string> = {};
     if (config.extraHeaders) {
@@ -66,7 +68,12 @@ export class OpenAICompatibleAdapter implements LLMProvider {
 
   async healthCheck(): Promise<boolean> {
     try {
-      await this.client.models.list();
+      await this.client.chat.completions.create({
+        model: this.defaultModel,
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 1,
+        stream: false,
+      });
       return true;
     } catch {
       return false;

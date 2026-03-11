@@ -143,20 +143,22 @@ async function main() {
   console.log(`✅ 创建 ${agents.length} 个智能体`);
 
   // 5. 创建 LLM 供应商配置 (初始测试模型)
+  const zhipuModels = [
+    { modelId: 'glm-4-flash', name: 'GLM-4-Flash', maxTokens: 8192, inputPrice: 0, outputPrice: 0, isEnabled: true, memberTier: 'free' },
+    { modelId: 'glm-4.7-flash', name: 'GLM-4.7-Flash', maxTokens: 8192, inputPrice: 0, outputPrice: 0, isEnabled: true, memberTier: 'free' },
+    { modelId: 'glm-4-plus', name: 'GLM-4-Plus', maxTokens: 8192, inputPrice: 0.05, outputPrice: 0.05, isEnabled: true, memberTier: 'basic' },
+    { modelId: 'glm-4', name: 'GLM-4', maxTokens: 8192, inputPrice: 0.1, outputPrice: 0.1, isEnabled: true, memberTier: 'pro' },
+  ];
   await prisma.llmProviderConfig.upsert({
     where: { slug: 'zhipu' },
-    update: {},
+    update: { apiKey: process.env.ZHIPU_API_KEY || '', models: zhipuModels },
     create: {
       name: '智谱 AI',
       slug: 'zhipu',
       baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
       apiKey: process.env.ZHIPU_API_KEY || '',
       isEnabled: true,
-      models: [
-        { modelId: 'glm-4-flash', name: 'GLM-4-Flash', maxTokens: 4096, inputPrice: 0, outputPrice: 0, isEnabled: true, memberTier: 'free' },
-        { modelId: 'glm-4-plus', name: 'GLM-4-Plus', maxTokens: 8192, inputPrice: 0.05, outputPrice: 0.05, isEnabled: true, memberTier: 'basic' },
-        { modelId: 'glm-4', name: 'GLM-4', maxTokens: 8192, inputPrice: 0.1, outputPrice: 0.1, isEnabled: true, memberTier: 'pro' },
-      ],
+      models: zhipuModels,
     },
   });
 
